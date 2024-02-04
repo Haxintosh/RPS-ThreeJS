@@ -35,10 +35,6 @@ camera.position.set(-15, 0, 0);
 camera.lookAt(0, 0, 0);
 camera.zoom = 1;
 
-// Adding camera helper
-let camHelper = new THREE.CameraHelper(camera);
-scene.add(camHelper);
-
 // Variables for objects and flags
 let scissor;
 let paperStack;
@@ -52,6 +48,7 @@ let scissorPlayFlag = false;
 
 let rockMovingFlag = false;
 let paperMovingFlag = false;
+let scissorMovingFlag=false;
 
 let arenaObject = null;
 let stage;
@@ -74,8 +71,7 @@ loader.load(
         scissor.userData.isContainer = true;
         scene.add(scissor);
         scissor.rotateY(-1.5708);
-        scissor.translateX(-15);
-        scissor.translateZ(2.5);
+        scissor.position.set(-2.5, 0, -15);
         mixer = new THREE.AnimationMixer(gltf.scene);
         const clips = gltf.animations;
         const clip = THREE.AnimationClip.findByName(clips, 'Armature.001Action.001');
@@ -104,6 +100,7 @@ loader.load(
                 // console.log(child);
             }
         });
+        paperStack.name = "paperStack"
         scene.add(paperStack);
         paperStack.rotateY(1.5708);
         
@@ -131,6 +128,7 @@ loader.load(
             }
         });
         rock.position.set(0, 0, 8);
+        rock.name="rock";
         scene.add(rock);
     },
     function ( xhr ) {
@@ -192,6 +190,10 @@ setTimeout(()=>{
     });
 }, 2500);
 
+setTimeout(() => {
+    isAnyInArena();
+}, 10000);
+
 addEventListener("resize", ()=>{
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -224,41 +226,65 @@ async function onMouseDown(){
 
     for ( let i = 0; i < intersectsDown.length; i ++ ) {
         let obj = intersectsDown[i].object;
-        if (obj.name==='scissor'){
-            console.log("scissor clicked");
-        } else if (obj.name==='paperStack') { 
-            console.log("paper clicked");
-            if (!paperMovingFlag){
-                if (arenaObject===null){
-                    movePaperStack();
-                } else if (arenaObject === rock){
-                    moveRockBack();
-                    await waitForTween("rock");
-                    movePaperStack();
-                } else if (arenaObject === paperStack){
-                    moveBackPaperStack();
+        if (!rockMovingFlag && !paperMovingFlag && !scissorMovingFlag){
+            if (obj.name==='scissor'){
+                console.log("scissor clicked");
+                isAnyInArena();
+                if (!scissorMovingFlag){
+                    if (arenaObject === null && !isAnyInArena()){
+                        moveScissor();
+                    } else if (arenaObject === rock){
+                        moveRockBack();
+                        await waitForTween("rock");
+                        moveScissor();
+                    } else if (arenaObject === paperStack){
+                        moveBackPaperStack();
+                        await waitForTween("paper");
+                        moveScissor();
+                    } else if (arenaObject === scissor){
+                        moveBackScissor();
+                    }                
                 }
-            }
-        } else if (obj.name==='rock') {
-            console.log("dwayne clicked");
-            if (!rockMovingFlag){
-                if (arenaObject===null){
-                    moveRock();
-                } else if (arenaObject === rock){
-                    moveRockBack();
-                } else if (arenaObject === paperStack){
-                    moveBackPaperStack();
-                    // debugger
-                    let prom = await waitForTween("paper");
-
-                    console.log("ding");
-                    moveRock();
+            } else if (obj.name==='paperStack') { 
+                console.log("paper clicked");
+                isAnyInArena();
+                if (!paperMovingFlag){
+                    if (arenaObject===null && !isAnyInArena()){
+                        movePaperStack();
+                    } else if (arenaObject === rock){
+                        moveRockBack();
+                        await waitForTween("rock");
+                        movePaperStack();
+                    } else if (arenaObject === scissor){
+                        moveBackScissor();
+                        await waitForTween("scissor");
+                        movePaperStack();
+                    } else if (arenaObject === paperStack){
+                        moveBackPaperStack();
+                    }
                 }
+            } else if (obj.name==='rock') {
+                console.log("dwayne clicked");
+                isAnyInArena();
+                if (!rockMovingFlag){
+                    if (arenaObject===null && !isAnyInArena()){
+                        moveRock();
+                    } else if (arenaObject === paperStack){
+                        moveBackPaperStack();
+                        await waitForTween("paper");
+                        moveRock();
+                    } else if (arenaObject === scissor){
+                        moveBackScissor();
+                        await waitForTween("scissor");
+                        moveRock();
+                    } else if (arenaObject === rock){
+                        moveRockBack();
+                    }
+                }
+            } else {
+                console.log("what did you click");
             }
-        } else {
-            console.log("what did you click");
         }
-
     }
 }
 
@@ -267,12 +293,17 @@ function animate(){
     if ( mixer ) {
         mixer.update(clock.getDelta());
     }
+    
     raycastHandler();
     // controls.update();
     // renderer.render(scene, camera);
+    // if (arenaObject === null){
+    //     console.log("arena null");
+    // } else {
+    //     console.log(arenaObject.name);
+    // }
     composer.render();
     TWEEN.update();
-    camHelper.update();
     stats.update();
 }
 
@@ -284,7 +315,6 @@ function raycastHandler(){
     let highlightedItems=[];
     if (intersects.length===0 && scissorPlayFlag){
         scissorPlayFlag=false;
-        // console.log("NOT TOUCHING!");
         return;
     }
 	for ( let i = 0; i < intersects.length; i ++ ) {
@@ -324,7 +354,6 @@ function getAllObjectsInGroup(group, type) {
     group.traverse((object) => {
         if (object.type===type) {
             objects.push(object);
-            // console.log(object);
         }
     });
 
@@ -338,7 +367,7 @@ async function moveRock(){
     rockMovingFlag = true;
     arenaObject = rock;
     const rockTween = new TWEEN.Tween({x:0, y:0, z:8})
-    .to({x:10, y:0, z :0}, 3000)
+    .to({x:10, y:0, z :0}, 2000)
     .easing(TWEEN.Easing.Circular.InOut);
 
     rockTween.onUpdate(function(obj){
@@ -358,7 +387,7 @@ async function moveRockBack(){
     }
     rockMovingFlag = true;
     const rockBackTween = new TWEEN.Tween({x:10, y:0, z:0})
-    .to({x:0, y:0, z :8}, 3000)
+    .to({x:0, y:0, z :8}, 2000)
     .easing(TWEEN.Easing.Circular.InOut);
 
     rockBackTween.onUpdate(function(obj){
@@ -369,6 +398,7 @@ async function moveRockBack(){
         console.log("Dwayne has reached destination");
         rockMovingFlag=false;
         arenaObject = null;
+        
     });
     rockBackTween.start();
 }
@@ -380,7 +410,7 @@ async function movePaperStack(){
     paperMovingFlag = true;
     arenaObject = paperStack;
     const paperStackTween = new TWEEN.Tween({x:0, y:0, z:0})
-    .to({x:10, y:0, z:0}, 3000)
+    .to({x:10, y:0, z:0}, 2000)
     .easing(TWEEN.Easing.Circular.InOut);
 
     paperStackTween.onUpdate(function(obj){
@@ -401,7 +431,7 @@ async function moveBackPaperStack(){
     }
     paperMovingFlag = true;
     const paperBackStackTween = new TWEEN.Tween({x:10, y:0, z:0})
-    .to({x:0, y:0, z:0}, 3000)
+    .to({x:0, y:0, z:0}, 2000)
     .easing(TWEEN.Easing.Circular.InOut);
 
     paperBackStackTween.onUpdate(function(obj){
@@ -417,23 +447,113 @@ async function moveBackPaperStack(){
     paperBackStackTween.start();
 }
 
+async function moveScissor(){
+    if (scissorMovingFlag){
+        await waitForTween("scissor");
+    }
+    scissorMovingFlag = true;
+    arenaObject = scissor;
+    const scissorTween = new TWEEN.Tween({x: -2.5, y:0, z:-15})
+    .to({x:8.5, y:0, z:-6.8}, 2000)
+    .easing(TWEEN.Easing.Circular.InOut);
+
+    scissorTween.onUpdate(function(obj){
+        scissor.position.set(obj.x, obj.y, obj.z);
+    });
+
+    scissorTween.onComplete(()=>{
+        scissorMovingFlag=false;
+    });
+
+    scissorTween.start();
+}
+
+async function moveBackScissor(){
+    if (scissorMovingFlag){
+        await waitForTween("scissor");
+    }
+    scissorMovingFlag = true;
+    const scissorBackTween = new TWEEN.Tween({x:8.5, y:0, z:-6.8})
+    .to({x: -2.5, y:0, z:-15})
+    .easing(TWEEN.Easing.Circular.InOut);
+
+    scissorBackTween.onUpdate(function(obj){
+        scissor.position.set(obj.x, obj.y, obj.z);
+    });
+
+    scissorBackTween.onComplete(()=>{
+        scissorMovingFlag=false;
+        checkForTweenLocation(scissor);
+        arenaObject = null;
+    });
+    
+    scissorBackTween.start();
+}
+
 
 async function waitForTween(name) {
     return new Promise(resolve => {
         const intervalId = setInterval(() => {
-            console.log("CHECKING");
             let thing;
             if (name === "paper"){
                 thing = paperMovingFlag;
             } else if (name === "rock"){
                 thing = rockMovingFlag;
+            } else if (name === "scissor"){
+                thing = scissorMovingFlag;
             }
 
             if (thing==false) {
-                console.log("RESOLVED!");
                 clearInterval(intervalId);
                 resolve();
             }
         }, 100);
     });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+// PURELT FOR SAFETY, HANDLE SOME EDGE CASES
+function checkForTweenLocation(tween){
+    let location = tween.position.x;
+    if (tween.name === "scissor"){
+        if (location === 8.5 || location!== -2.5) {
+            arenaObject = scissor;
+            return true;
+        } else {
+            return false;
+        }
+    } else if (tween.name === "rock"){
+        if (location === 10 || location!== 0){
+            arenaObject = rock;
+            return true;
+        } else {
+            return false;
+        }
+    } else if (tween.name === "paperStack"){
+        if (location === 10 || location!== 0){
+            arenaObject = paperStack;
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
+function isAnyInArena(){
+    if (checkForTweenLocation(rock)||checkForTweenLocation(paperStack)||checkForTweenLocation(scissor)){
+        return true;
+    } else {
+        return false;
+    }
 }
