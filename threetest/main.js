@@ -2,6 +2,7 @@
 import './style.css';
 import * as THREE from 'three';
 import * as TWEEN from '@tweenjs/tween.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
 import gsap from 'gsap';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
@@ -23,17 +24,25 @@ const composer = new EffectComposer(renderer);
 const loader = new GLTFLoader();
 const clock = new THREE.Clock();
 
+let debug = false;
 // Configuring renderer
 scene.background = new THREE.Color(0xFAC898);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 composer.setSize(innerWidth, innerHeight);
 
+
+const camArenaLookAt = new THREE.Vector3(-0.11064547517417635, -85.2479187656342, -52.275999308541785);
+const camArenaLocation = {x:16.376846037157872, y:12.796224937349221, z:7.527560527103185};
 // Setting camera properties
 let camLookAt = new THREE.Vector3(93.76287057264722, -34.722557980013036, 1.6935375111408746);
 camera.position.set(-15, 0, 0);
 camera.lookAt(0, 0, 0);
 camera.zoom = 1;
+
+
+let submitButton = document.getElementById("textSubmit");
+let submitButtonDiv = document.getElementById("textSubmitDiv")
 
 // Variables for objects and flags
 let scissor;
@@ -49,6 +58,8 @@ let scissorPlayFlag = false;
 let rockMovingFlag = false;
 let paperMovingFlag = false;
 let scissorMovingFlag=false;
+
+let isEnemyDescending = false;
 
 let arenaObject = null;
 let stage;
@@ -141,9 +152,10 @@ loader.load(
 
 	}
 );
-
-// const controls = new OrbitControls(camera, renderer.domElement);
-
+let controls;
+if (debug) {
+    controls = new OrbitControls(camera, renderer.domElement);
+}
 const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.3);
 scene.add(ambientLight);
 
@@ -206,13 +218,16 @@ addEventListener("resize", ()=>{
 addEventListener('mousemove', onPointerMove);
 
 addEventListener('mouseup', onMouseDown); 
-// controls.addEventListener( "change", () => {  
-//     console.log( "POS", controls.object.position ); 
-//     let target = new THREE.Vector3();
-//     controls.object.getWorldDirection(target);
-//     target.set(target.x*100, target.y*100, target.z*100);
-//     console.log( "OR", target );
-// });
+if (debug){
+    controls.addEventListener( "change", () => {  
+        console.log( "POS", controls.object.position ); 
+        let target = new THREE.Vector3();
+        controls.object.getWorldDirection(target);
+        target.set(target.x*100, target.y*100, target.z*100);
+        console.log( "OR", target );
+    });
+}
+submitButton.addEventListener("click", submitHandler);
 
 animate();
 
@@ -293,9 +308,11 @@ function animate(){
     if ( mixer ) {
         mixer.update(clock.getDelta());
     }
-    
+
     raycastHandler();
-    // controls.update();
+    if (debug){
+        controls.update();
+    }
     // renderer.render(scene, camera);
     // if (arenaObject === null){
     //     console.log("arena null");
@@ -501,6 +518,8 @@ async function waitForTween(name) {
                 thing = rockMovingFlag;
             } else if (name === "scissor"){
                 thing = scissorMovingFlag;
+            } else if (name === "enemy"){
+                thing = isEnemyDescending;
             }
 
             if (thing==false) {
@@ -510,18 +529,6 @@ async function waitForTween(name) {
         }, 100);
     });
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 // PURELT FOR SAFETY, HANDLE SOME EDGE CASES
 function checkForTweenLocation(tween){
@@ -555,5 +562,123 @@ function isAnyInArena(){
         return true;
     } else {
         return false;
+    }
+}
+
+function submitHandler(){
+    if (arenaObject===null){
+        console.log("NOTHING IN ARENA, SKIPPING");
+        return;
+    }
+    stage = 1;
+    submitButtonDiv.style.opacity=0;
+    gsap.to(camera.position, {
+        x: camArenaLocation.x, 
+        y: camArenaLocation.y, 
+        z: camArenaLocation.z,
+        duration:4,
+        onUpdate: function(){
+            camera.lookAt(camArenaLookAt);
+        }
+    });
+    generateEnemyChoice();
+}
+
+let enemyObject;
+function generateEnemyChoice(){
+    let choices = ["rock", "paperStack", "scissor"];
+    let enemyChoice = choices[Math.round(Math.random()*2)];
+    
+    if (enemyChoice === "rock"){
+        enemyObject = SkeletonUtils.clone(rock);
+    } else if (enemyChoice === "paperStack"){
+        enemyObject = SkeletonUtils.clone(paperStack);
+    } else if (enemyChoice === "scissor"){
+        enemyObject = SkeletonUtils.clone(scissor);
+    } else {
+        console.log("magic happened");
+    }
+
+    console.log(enemyChoice);
+    if (enemyChoice!=="scissor"){
+        enemyObject.position.set(20, 5, 0);
+        scene.add(enemyObject);
+        isEnemyDescending = true;
+        console.log(enemyObject.name);
+        let enemyObjectTween = new TWEEN.Tween({x:20, y:5, z:0})
+        .to({x:25, y:0, z:0}, 3000)
+        .easing(TWEEN.Easing.Circular.InOut);
+
+        enemyObjectTween.onUpdate(function(obj){
+            enemyObject.position.set(obj.x, obj.y, obj.z);
+        });
+
+        enemyObjectTween.onComplete(()=>{
+            isEnemyDescending = false;
+        });
+
+        enemyObjectTween.start();
+        arenaFightHandler();
+    }
+}
+
+async function arenaFightHandler(){
+    let userChoice = arenaObject.name;
+    let enemyChoice = enemyObject.name;
+
+    if (userChoice === enemyChoice){
+        console.log("TIE");
+        if (rockMovingFlag){
+            await waitForTween("rock");
+        } else if (paperMovingFlag){
+            await waitForTween("paper");
+        } else if (scissorMovingFlag){
+            await waitForTween("scissor");
+        }
+
+        let userTween = new TWEEN.Tween({x:10, y:0, z:0})
+        .to({x:15, y:0, z:0}, 1000)
+        .easing(TWEEN.Easing.Bounce.Out)
+        .onUpdate(function(obj){
+            arenaObject.position.set(obj.x, obj.y, obj.z);
+        });
+
+        let enemyTween = new TWEEN.Tween({x:25, y:0, z:0})
+        .to({x:20, y:0, z:0}, 1000)
+        .easing(TWEEN.Easing.Bounce.Out)
+        .onUpdate(function(obj){
+            enemyObject.position.set(obj.x, obj.y, obj.z);
+        });
+
+        let userFadeTween = new TWEEN.Tween({x:15, y:0, z:0})
+        .to({x:15, y:-120, z:0}, 2000)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(function(obj){
+            arenaObject.position.set(obj.x, obj.y, obj.z);
+        });
+
+        let enemeyFadeTween = new TWEEN.Tween({x:20, y:0, z:0})
+        .to({x:20, y:-120, z:0}, 2000)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(function(obj){
+            enemyObject.position.set(obj.x, obj.y, obj.z);
+        });
+        
+        userTween.chain(userFadeTween);
+        enemyTween.chain(enemeyFadeTween);
+
+        setTimeout(()=>{
+            userTween.start();
+            enemyTween.start();
+        }, 3000);
+
+    } else if (
+        (userChoice === 'rock' && enemyChoice === 'scissor') ||
+        (userChoice === 'paperStack' && enemyChoice === 'rock') ||
+        (userChoice === 'scissor' && enemyChoice === 'paperStack')
+    ) {
+        console.log("USER WON!");
+    } else {
+        console.log("DUNDUNDUN");
     }
 }
