@@ -83,6 +83,13 @@ outlinePass.edgeStrength = 10;
 const outputPass = new OutputPass();
 composer.addPass( outputPass );
 
+let easyButton;
+let mediumButton;
+let hardButton;
+let easyLabel;
+let mediumLabel;
+let hardLabel;
+
 let welcomeMesh;
 function init(font){
     loaded = true;
@@ -186,13 +193,13 @@ function init(font){
     chooseDiffMesh.castShadow = true;
     scene.add(chooseDiffMesh);
 
-    let easyButton = new THREE.Mesh(easyButtonGeo, buttonEasyMaterial);
-    let mediumButton = new THREE.Mesh(mediumButtonGeo, buttonMediumMaterial);
-    let hardButton = new THREE.Mesh(hardButtonGeo, buttonHardMaterial);
+    easyButton = new THREE.Mesh(easyButtonGeo, buttonEasyMaterial);
+    mediumButton = new THREE.Mesh(mediumButtonGeo, buttonMediumMaterial);
+    hardButton = new THREE.Mesh(hardButtonGeo, buttonHardMaterial);
 
-    let easyLabel = new THREE.Mesh(easyText, buttonLabelMaterial);
-    let mediumLabel = new THREE.Mesh(mediumText, buttonLabelMaterial);
-    let hardLabel = new THREE.Mesh(hardText, buttonLabelMaterial);
+    easyLabel = new THREE.Mesh(easyText, buttonLabelMaterial);
+    mediumLabel = new THREE.Mesh(mediumText, buttonLabelMaterial);
+    hardLabel = new THREE.Mesh(hardText, buttonLabelMaterial);
 
     easyLabel.name = "easy";
     mediumLabel.name = "medium";
@@ -221,8 +228,35 @@ function init(font){
 
     chooseDiffMesh.position.set(150, -60, 0);
 
-    let ambientLight = new THREE.AmbientLight(0xffffff, 3);
+    let ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
+
+    let pointLight = new THREE.PointLight(0xffffff, 5000000*1.2);
+    pointLight.position.set(500, 1000, 75);
+    scene.add(pointLight);
+
+    let lightHelper = new THREE.PointLightHelper(pointLight);
+    scene.add(lightHelper);
+
+    renderPixelatedPass.depthEdgeStrength=1;
+
+    let welcomeTween = new TWEEN.Tween({x: 0, y: 0, z: 0})
+    .to({x: 0, y: 0, z: 20}, 4000)
+    .easing(TWEEN.Easing.Quadratic.InOut)
+    .onUpdate(function (obj){
+        welcomeMesh.position.set(obj.x, obj.y, obj.z);
+    });
+    let welcomeTweenBack = new TWEEN.Tween({x: 0, y: 0, z: 20})
+    .to({x: 0, y: 0, z: 0}, 4000)
+    .easing(TWEEN.Easing.Quadratic.InOut)
+    .onUpdate(function (obj){
+        welcomeMesh.position.set(obj.x, obj.y, obj.z);
+    });
+
+    welcomeTween.chain(welcomeTweenBack);
+    welcomeTweenBack.chain(welcomeTween);
+
+    welcomeTween.start();
 
     animate();
     if (debug){
@@ -248,7 +282,7 @@ addEventListener("resize", ()=>{
 
 addEventListener('mousemove', onPointerMove);
 
-
+addEventListener('click', buttonHandler);
 
 function onPointerMove( event ) {
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -262,6 +296,7 @@ function animate(){
     //     console.log("loaded");
     // }
     raycastHandler();
+    TWEEN.update();
     composer.render();
     if (debug){
         controls.update();
@@ -275,8 +310,42 @@ function raycastHandler(){
     if (intersects.length > 0){
         let object = intersects[0].object;
         if (object.name === "easy" || object.name === "medium" || object.name === "hard"){
-            console.log(object.name);
+            // console.log(object.name);
             outlinePass.selectedObjects = [object];
+            object.position.z = -10;
+        }
+    } else {
+        easyButton.position.z = 0;
+        mediumButton.position.z = 0;
+        hardButton.position.z = 0;
+        easyLabel.position.z = 0;
+        mediumLabel.position.z = 0;
+        hardLabel.position.z = 0;
+    }
+}
+
+function buttonHandler(){
+    let raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    let intersects = raycaster.intersectObjects(scene.children, true);
+    if (intersects.length > 0){
+        let object = intersects[0].object;
+        if (object.name === "easy" || object.name === "medium" || object.name === "hard"){
+            console.log(object.name);
+            let url = "/game.html"
+            switch (object.name){ // omg there's something called switch :brainblown:
+                case "easy":
+                    url += "?difficulty=easy";
+                    break;
+                case "medium":
+                    url += "?difficulty=medium";
+                    break;
+                case "hard":
+                    url += "?difficulty=hard";
+                    break;
+            }
+            console.log(url);
+            window.location.replace(url);
         }
     }
 }

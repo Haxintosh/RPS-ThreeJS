@@ -30,7 +30,6 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 composer.setSize(innerWidth, innerHeight);
 
-
 const camArenaLookAt = new THREE.Vector3(-0.11064547517417635, -85.2479187656342, -52.275999308541785);
 const camArenaLocation = {x:16.376846037157872, y:12.796224937349221, z:7.527560527103185};
 // Setting camera properties
@@ -63,6 +62,12 @@ let isEnemyDescending = false;
 let arenaObject = null;
 let stage;
 
+let params = new URLSearchParams(window.location.search);
+let difficulty = params.get('difficulty');
+if (difficulty === null){
+    difficulty = "easy";
+}
+console.log(difficulty);
 const stats = new Stats();
 document.body.appendChild(stats.dom);
 
