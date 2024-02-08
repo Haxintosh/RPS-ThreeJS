@@ -18,16 +18,31 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader';
 
+let loaded = false;
 const { innerWidth, innerHeight } = window;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#canvas') });
 const composer = new EffectComposer(renderer);
 const loader = new GLTFLoader();
-const clock = new THREE.Clock();
+let mouse = new THREE.Vector2();
+
+let camOrigin = {
+    "x": 329.1184433897465,
+    "y": -143.55820963544724,
+    "z": 344.70554127267064
+  }
+
+let cameraTarget = {
+    "x": -3100,
+    "y": 1400,
+    "z": -9400
+  }
+
+
 let controls;
 
-let debug = true;
+let debug = false;
 // Configuring renderer
 scene.background = new THREE.Color(0xFAC898);
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -36,8 +51,8 @@ renderer.shadowMap.enabled = true;
 composer.setSize(innerWidth, innerHeight);
 
 // Setting camera properties
-camera.position.set(-15, 0, 0);
-camera.lookAt(0, 0, 0);
+camera.position.set(camOrigin.x, camOrigin.y, camOrigin.z);
+camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
 camera.zoom = 1;
 
 let fontLoader = new FontLoader();
@@ -61,11 +76,16 @@ const font = fontLoader.load(
 const renderPixelatedPass = new RenderPixelatedPass( 3, scene, camera );
 composer.addPass(renderPixelatedPass);
 
+const outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
+composer.addPass(outlinePass);
+outlinePass.edgeStrength = 10;
+
 const outputPass = new OutputPass();
 composer.addPass( outputPass );
 
-
+let welcomeMesh;
 function init(font){
+    loaded = true;
     let buttonWidth = 125
     let buttonHeight = 40;
     let buttonDepth = 20;
@@ -96,7 +116,7 @@ function init(font){
     let easyText = new TextGeometry('EASY', {
         font:font,
         size:25,
-        height:20,
+        height:10,
         curveSegments:1,
         bevelEnabled: false
     });
@@ -104,7 +124,7 @@ function init(font){
     let mediumText = new TextGeometry('MEDIUM', {
         font:font,
         size:25,
-        height:20,
+        height:10,
         curveSegments:1,
         bevelEnabled: false
     });
@@ -112,7 +132,7 @@ function init(font){
     let hardText = new TextGeometry('IMPOSSIBLE', {
         font:font,
         size:25,
-        height:20,
+        height:10,
         curveSegments:1,
         bevelEnabled: false
     });
@@ -152,11 +172,11 @@ function init(font){
     });
 
     let buttonLabelMaterial = new THREE.MeshToonMaterial({
-        color:0xFFFFFF.
+        color:0xFFFFFF
     });
     // let welcomeMaterial = new THREE.MeshToonMaterial();
 
-    let welcomeMesh = new THREE.Mesh(welcomeText, welcomeMaterial);
+    welcomeMesh = new THREE.Mesh(welcomeText, welcomeMaterial);
     welcomeMesh.receiveShadow = true;
     welcomeMesh.castShadow = true;
     scene.add(welcomeMesh);
@@ -171,10 +191,20 @@ function init(font){
     let hardButton = new THREE.Mesh(hardButtonGeo, buttonHardMaterial);
 
     let easyLabel = new THREE.Mesh(easyText, buttonLabelMaterial);
+    let mediumLabel = new THREE.Mesh(mediumText, buttonLabelMaterial);
+    let hardLabel = new THREE.Mesh(hardText, buttonLabelMaterial);
+
+    easyLabel.name = "easy";
+    mediumLabel.name = "medium";
+    hardLabel.name = "hard";
     
     easyButton.name = "easy";
     mediumButton.name = "medium";
     hardButton.name = "hard";
+
+    scene.add(easyLabel);
+    scene.add(mediumLabel);
+    scene.add(hardLabel);
 
     scene.add(easyButton);
     scene.add(mediumButton);
@@ -184,12 +214,27 @@ function init(font){
     mediumButton.position.set(125, -165, 0);
     hardButton.position.set(125, -215, 0);
 
+    easyLabel.position.set(125 + buttonWidth - 20, -115 - (buttonHeight/4), 0);
+    mediumLabel.position.set(125 + buttonWidth - 20 , -165 - (buttonHeight/4), 0);
+    hardLabel.position.set(125 + buttonWidth - 20 , -215 - (buttonHeight/4), 0);
+
+
     chooseDiffMesh.position.set(150, -60, 0);
 
     let ambientLight = new THREE.AmbientLight(0xffffff, 3);
     scene.add(ambientLight);
 
     animate();
+    if (debug){
+        controls.addEventListener( "change", () => {  
+            console.log( "POS", controls.object.position ); 
+            let target = new THREE.Vector3();
+            controls.object.getWorldDirection(target);
+            target.set(target.x*100, target.y*100, target.z*100);
+            console.log( "OR", target );
+        });
+    }
+    
 }
 
 
@@ -201,10 +246,37 @@ addEventListener("resize", ()=>{
     composer.setSize(window.innerWidth, window.innerHeight);
 });
 
+addEventListener('mousemove', onPointerMove);
+
+
+
+function onPointerMove( event ) {
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+}
+
+
 function animate(){
     requestAnimationFrame(animate);
+    // if (loaded){
+    //     console.log("loaded");
+    // }
+    raycastHandler();
     composer.render();
     if (debug){
         controls.update();
+    }
+}
+
+function raycastHandler(){
+    let raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    let intersects = raycaster.intersectObjects(scene.children, true);
+    if (intersects.length > 0){
+        let object = intersects[0].object;
+        if (object.name === "easy" || object.name === "medium" || object.name === "hard"){
+            console.log(object.name);
+            outlinePass.selectedObjects = [object];
+        }
     }
 }

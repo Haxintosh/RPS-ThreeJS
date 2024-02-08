@@ -5,7 +5,6 @@ import * as TWEEN from '@tweenjs/tween.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils'
 import gsap from 'gsap';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Stats from 'three/examples/jsm/libs/stats.module';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
