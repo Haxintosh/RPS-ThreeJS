@@ -1,0 +1,84 @@
+@font-face {
+  font-family: Berlin;
+  src: url('/fonts/galey-bold.ttf');
+  font-weight: 1000;
+}
+
+
+#canvas{
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+  'FILL' 0,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 24
+}
+
+#buttonSubmit {
+  font-family: 'Berlin';
+  font-size: 20px;
+  background: #212121;
+  color: white;
+  fill: rgb(155, 153, 153);
+  padding: 0.7em 1em;
+  padding-left: 0.9em;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border: none;
+  border-radius: 15px;
+  font-weight: 1000;
+  position: fixed;
+  left: 50%;
+  top: 90%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+} 
+
+#buttonSubmit #textSubmit {
+  display: block;
+  margin-left: 0.3em;
+  transition: all 0.3s ease-in-out;
+}
+
+#buttonSubmit #icon {
+  display: block;
+  transform-origin: center center;
+  transition: transform 0.3s ease-in-out;
+}
+
+#buttonSubmit:hover {
+  background: #000;
+}
+
+#buttonSubmit:hover #buttonSvgWrapper{
+  transform: scale(1);
+  transition: 0.5s linear;
+}
+
+#buttonSubmit:hover #icon {
+  transform: translateX(2.5rem) scale(1.1);
+  fill: #fff;
+}
+
+#buttonSubmit:hover #textSubmit {
+  font-family: 'Berlin';
+  letter-spacing: 3px;;
+  opacity: 0;
+  transition: 0.5s linear;
+}
+
+#buttonSubmit:active {
+  transform: scale(0.5);
+  position: fixed;
+  left: 50%;
+  top: 90%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
