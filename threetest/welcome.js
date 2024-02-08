@@ -92,6 +92,30 @@ function init(font){
         curveSegments:1,
         bevelEnabled: false
     });
+
+    let easyText = new TextGeometry('EASY', {
+        font:font,
+        size:25,
+        height:20,
+        curveSegments:1,
+        bevelEnabled: false
+    });
+
+    let mediumText = new TextGeometry('MEDIUM', {
+        font:font,
+        size:25,
+        height:20,
+        curveSegments:1,
+        bevelEnabled: false
+    });
+
+    let hardText = new TextGeometry('IMPOSSIBLE', {
+        font:font,
+        size:25,
+        height:20,
+        curveSegments:1,
+        bevelEnabled: false
+    });
     
     let easyButtonGeo = new THREE.BoxGeometry(buttonWidth, buttonHeight, buttonDepth);
     let mediumButtonGeo = new THREE.BoxGeometry(buttonWidth, buttonHeight, buttonDepth);
@@ -106,6 +130,7 @@ function init(font){
         shininess: 10,
         specular: 0xffffff
     });
+
 
     let chooseDiffMaterial= new THREE.MeshPhongMaterial({
         color:0x1c1c84,
@@ -126,7 +151,9 @@ function init(font){
         color: 0xD21F3C,
     });
 
-
+    let buttonLabelMaterial = new THREE.MeshToonMaterial({
+        color:0xFFFFFF.
+    });
     // let welcomeMaterial = new THREE.MeshToonMaterial();
 
     let welcomeMesh = new THREE.Mesh(welcomeText, welcomeMaterial);
@@ -142,6 +169,8 @@ function init(font){
     let easyButton = new THREE.Mesh(easyButtonGeo, buttonEasyMaterial);
     let mediumButton = new THREE.Mesh(mediumButtonGeo, buttonMediumMaterial);
     let hardButton = new THREE.Mesh(hardButtonGeo, buttonHardMaterial);
+
+    let easyLabel = new THREE.Mesh(easyText, buttonLabelMaterial);
     
     easyButton.name = "easy";
     mediumButton.name = "medium";
