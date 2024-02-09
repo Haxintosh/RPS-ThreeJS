@@ -14,6 +14,7 @@
   "dependencies": {
     "@tweenjs/tween.js": "^23.1.1",
     "gsap": "^3.12.5",
-    "three": "^0.161.0"
+    "three": "^0.161.0",
+    "vike": "^0.4.161"
   }
 }
