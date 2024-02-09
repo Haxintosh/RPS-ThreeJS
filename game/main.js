@@ -100,7 +100,7 @@ document.body.appendChild(stats.dom);
 
 // Loading models
 loader.load(
-    '/3d/scissor/scissor.glb',
+    '/threeTest/3d/scissor/scissor.glb',
     function(gltf){
         scissor = gltf.scene;
         scissor.traverse((child)=>{
@@ -134,7 +134,7 @@ loader.load(
 );
 
 loader.load(
-    '/3d/paper_stack.glb',
+    '/threeTest/3d/paper_stack.glb',
     function(gltf){
         paperStack = gltf.scene;
         paperStack.scale.set(0.15, 0.15, 0.15);
@@ -162,7 +162,7 @@ loader.load(
 );
 
 loader.load(
-    '/3d/rock_and_plants.glb',
+    '/threeTest/3d/rock_and_plants.glb',
     function(gltf){
         rock = gltf.scene;
         rock.scale.set(0.5, 0.5, 0.5);
