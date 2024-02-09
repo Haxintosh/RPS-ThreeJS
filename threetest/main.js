@@ -23,24 +23,25 @@ const composer = new EffectComposer(renderer);
 const loader = new GLTFLoader();
 const clock = new THREE.Clock();
 
-let debug = true;
+let debug = false;
 // Configuring renderer
 scene.background = new THREE.Color(0xFAC898);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 composer.setSize(innerWidth, innerHeight);
 
-const camArenaLookAt = new THREE.Vector3(-0.11064547517417635, -85.2479187656342, -52.275999308541785);
-const camArenaLocation = {x:16.376846037157872, y:12.796224937349221, z:7.527560527103185};
+const camArenaLookAt = new THREE.Vector3(-1816.82, -69449.61, -71926.69);
+const camArenaLocation = {   "x": 17.733316880083002,   "y": 16.205656198772562,   "z": 13.555062012063997 };
 // Setting camera properties
 let camLookAt = new THREE.Vector3(93.76287057264722, -34.722557980013036, 1.6935375111408746);
 camera.position.set(-15, 0, 0);
 camera.lookAt(0, 0, 0);
 camera.zoom = 1;
 
-
-let submitButton = document.getElementById("textSubmit");
+let submitButton = document.getElementById("buttonSubmit");
 let submitButtonDiv = document.getElementById("textSubmitDiv")
+let submitIcon = document.getElementById("icon");
+let submitText = document.getElementById("textSubmit");
 
 // Variables for objects and flags
 let scissor;
@@ -52,7 +53,6 @@ let mixer;
 let action;
 
 let scissorPlayFlag = false;
-
 let rockMovingFlag = false;
 let paperMovingFlag = false;
 let scissorMovingFlag=false;
@@ -60,8 +60,13 @@ let scissorMovingFlag=false;
 let isEnemyDescending = false;
 
 let arenaObject = null;
+let userStatus = null;
 let stage;
 
+
+
+let restartFlag = false;
+let arenaFlag = false;
 let params = new URLSearchParams(window.location.search);
 let difficulty = params.get('difficulty');
 if (difficulty === null){
@@ -71,6 +76,16 @@ console.log(difficulty);
 const stats = new Stats();
 document.body.appendChild(stats.dom);
 
+let winDict = {
+    "rock": "scissor",
+    "paperStack": "rock",
+    "scissor": "paperStack"
+};
+let loseDict = {
+    "rock": "paperStack",
+    "paperStack": "scissor",
+    "scissor": "rock"
+}
 loader.load(
     '/3d/scissor/scissor.glb',
     function(gltf){
@@ -95,7 +110,6 @@ loader.load(
     },
     function ( xhr ) {
 		console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-
 	},
     function ( error ) {
         console.log(error);
@@ -193,18 +207,18 @@ composer.addPass(aaPass);
 
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
-setTimeout(()=>{
-    gsap.to(camera.position, {
-        x: -11.123218848096666, 
-        y: 8.150632911308724, 
-        z: 0.023543489967580447,
-        duration:2,
-        onUpdate: function(){
-            camera.lookAt(camLookAt);
-        }
+// setTimeout(()=>{
+//     gsap.to(camera.position, {
+//         x: -11.123218848096666, 
+//         y: 8.150632911308724, 
+//         z: 0.023543489967580447,
+//         duration:2,
+//         onUpdate: function(){
+//             camera.lookAt(camLookAt);
+//         }
 
-    });
-}, 2500);
+//     });
+// }, 2500);
 
 setTimeout(() => {
     isAnyInArena();
@@ -224,11 +238,11 @@ addEventListener('mousemove', onPointerMove);
 addEventListener('mouseup', onMouseDown); 
 if (debug){
     controls.addEventListener( "change", () => {  
-        // console.log( "POS", controls.object.position ); 
-        // let target = new THREE.Vector3();
-        // controls.object.getWorldDirection(target);
-        // target.set(target.x*100, target.y*100, target.z*100);
-        // console.log( "OR", target );
+        console.log( "POS", controls.object.position ); 
+        let target = new THREE.Vector3();
+        controls.object.getWorldDirection(target);
+        target.set(target.x*100, target.y*100, target.z*100);
+        console.log( "OR", target );
     });
 }
 submitButton.addEventListener("click", submitHandler);
@@ -241,12 +255,17 @@ function onPointerMove( event ) {
 }
 
 async function onMouseDown(){
+    if (arenaFlag){
+        return;
+    }
+
     const intersectsDown = raycaster.intersectObjects( scene.children, true);
 
     for ( let i = 0; i < intersectsDown.length; i ++ ) {
         let obj = intersectsDown[i].object;
         if (!rockMovingFlag && !paperMovingFlag && !scissorMovingFlag){
             if (obj.name==='scissor'){
+                arenaFlag = true;
                 console.log("scissor clicked");
                 isAnyInArena();
                 if (!scissorMovingFlag){
@@ -265,6 +284,7 @@ async function onMouseDown(){
                     }                
                 }
             } else if (obj.name==='paperStack') { 
+                arenaFlag = true;
                 console.log("paper clicked");
                 isAnyInArena();
                 if (!paperMovingFlag){
@@ -283,6 +303,7 @@ async function onMouseDown(){
                     }
                 }
             } else if (obj.name==='rock') {
+                arenaFlag = true;
                 console.log("dwayne clicked");
                 isAnyInArena();
                 if (!rockMovingFlag){
@@ -317,12 +338,6 @@ function animate(){
     if (debug){
         controls.update();
     }
-    // renderer.render(scene, camera);
-    // if (arenaObject === null){
-    //     console.log("arena null");
-    // } else {
-    //     console.log(arenaObject.name);
-    // }
     composer.render();
     TWEEN.update();
     stats.update();
@@ -570,28 +585,47 @@ function isAnyInArena(){
 }
 
 function submitHandler(){
+    if (restartFlag){
+        globalReset();
+        return;
+    }
     if (arenaObject===null){
         console.log("NOTHING IN ARENA, SKIPPING");
         return;
     }
     stage = 1;
     submitButtonDiv.style.opacity=0;
-    // gsap.to(camera.position, {
-    //     x: camArenaLocation.x, 
-    //     y: camArenaLocation.y, 
-    //     z: camArenaLocation.z,
-    //     duration:4,
-    //     onUpdate: function(){
-    //         camera.lookAt(camArenaLookAt);
-    //     }
-    // });
+    gsap.to(camera.position, {
+        x: camArenaLocation.x, 
+        y: camArenaLocation.y, 
+        z: camArenaLocation.z,
+        duration:4,
+        onUpdate: function(){
+            camera.lookAt(camArenaLookAt);
+        }
+    });
     generateEnemyChoice();
 }
 
 let enemyObject;
 function generateEnemyChoice(){
     let choices = ["rock", "paperStack", "scissor"];
-    let enemyChoice = choices[Math.round(Math.random()*2)];// 
+    let choice;
+    let name = arenaObject.name;
+
+    if (difficulty === "easy"){
+        let n = choices.indexOf(winDict[name])
+        choice = generateBiasedNumber(n);
+    } else if (difficulty === "medium"){
+        choice = Math.round(Math.random()*2);
+    } else if (difficulty === "hard"){
+        let n = choices.indexOf(loseDict[name]);
+        choice = generateBiasedNumber(n);
+    }
+    console.log(choice);
+    console.log(choices.indexOf(arenaObject.name));
+    
+    let enemyChoice = choices[choice];// 
     
     if (enemyChoice === "rock"){
         enemyObject = SkeletonUtils.clone(rock);
@@ -673,13 +707,13 @@ async function arenaFightHandler(){
     }
 
     if (userChoice === "paperStack"){ 
-        userPos = {x:15, y:0, z:0};
+        userPos = {x:10, y:0, z:0};
         userArenaPos = {x:17, y:0, z:0};
         userFadePos = {x:17, y:-120, z:0};
     }
 
     if (userChoice === "rock" ){
-        userPos = {x:15, y:0, z:0};
+        userPos = {x:10, y:0, z:0};
         userArenaPos = {x:16, y:0, z:0};
         userFadePos = {x:16, y:-120, z:0};
     }
@@ -695,7 +729,7 @@ async function arenaFightHandler(){
 
     if (userChoice === enemyChoice){
         console.log("TIE");
-        console.log(enemyPos, enemyArenaPos);
+        userStatus = "tie";
 
         let userTween = new TWEEN.Tween(userPos)
         .to(userArenaPos, 2000)
@@ -739,7 +773,7 @@ async function arenaFightHandler(){
         (userChoice === 'scissor' && enemyChoice === 'paperStack')
     ) {
         console.log("USER WON!");
-
+        userStatus = "won";
         if (userChoice === "scissor"){
             action.play();
         }
@@ -774,8 +808,6 @@ async function arenaFightHandler(){
             }, 1000);
         });
 
-
-
         setTimeout(()=>{
             userTween.start();
             enemyTween.start();
@@ -784,7 +816,7 @@ async function arenaFightHandler(){
         
     } else {
         console.log("USER LOST!");
-
+        userStatus = "lost";
         let userFadeTween = new TWEEN.Tween(userArenaPos)
         .to(userFadePos, 2000)
         .easing(TWEEN.Easing.Quadratic.InOut)
@@ -815,6 +847,190 @@ async function arenaFightHandler(){
             userTween.start();
             enemyTween.start();
         }, 1000);
-
     }
+    restart();
+}
+
+function generateBiasedNumber(biasNumber = null) {
+    const mean = biasNumber !== null && biasNumber >= 0 && biasNumber <= 2 ? biasNumber : 1; // the numbe is mean ;(
+    const stdDev = 0.5; 
+  
+    // Function to generate a random number from a distribution whose name is derived from a measure of the intensity of a magnetic field
+    function randomGaussian(mean, stdDev) {
+      let u = 0,
+        v = 0;
+      while (u === 0) u = Math.random(); // Converting [0,1) to (0,1)
+      while (v === 0) v = Math.random();
+      const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+      return mean + z * stdDev;
+    }
+  
+    let biasedValue = Math.round(randomGaussian(mean, stdDev));
+    
+    // Reject outcasts
+    biasedValue = Math.min(Math.max(biasedValue, 0), 2);
+  
+    return biasedValue;
+}
+
+function restart(){
+    submitIcon.innerHTML = "restart_alt";
+    submitText.innerHTML = "Restart";
+    submitButtonDiv.style.opacity=1;
+    restartFlag = true;
+}
+
+ async function globalReset(){
+    restartFlag = false;
+    arenaFlag = false;
+
+    if (userStatus === "won" || userStatus === "tie"){
+        switch (arenaObject.name) {
+            case "rock":
+                moveRockBackFade();
+                break;
+            case "paperStack":
+                moveBackPaperStackFade();
+                break;
+            case "scissor":
+                moveBackScissorFade();
+                break;
+            default:
+                break;
+        }
+    } else if (userStatus === "lost"){
+        moveEnemyBack(enemyObject);
+        switch (arenaObject.name) {
+            case "rock":
+                moveRockBackFade();
+                break;
+            case "paperStack":
+                moveBackPaperStackFade();
+                break;
+            case "scissor":
+                moveBackScissorFade();
+                break;
+            default:
+                break;
+        }
+        await waitForTween("enemy");
+    } 
+
+    scene.remove(enemyObject);
+    arenaObject = null;
+    enemyObject = null;
+    scissorPlayFlag = false;
+    rockMovingFlag = false;
+    paperMovingFlag = false;
+    scissorMovingFlag=false;
+    isEnemyDescending = false;
+    submitIcon.innerHTML = "arrow_forward";
+    submitText.innerHTML = "Select";
+    submitButtonDiv.style.opacity=1;
+
+    gsap.to(camera.position, {
+        x: -15, 
+        y: 0, 
+        z: 0,
+        duration:2,
+        onUpdate: function(){
+            camera.lookAt(0, 0, 0);
+        }
+    });
+  }
+
+  async function moveRockBackFade(){
+    if (rockMovingFlag){
+        await waitForTween("rock"); 
+    }
+    rockMovingFlag = true;
+    const rockBackTween = new TWEEN.Tween({x:20, y:-120, z:0})
+    .to({x:0, y:0, z :8}, 2000)
+    .easing(TWEEN.Easing.Circular.InOut);
+
+    rockBackTween.onUpdate(function(obj){
+        rock.position.set(obj.x, obj.y, obj.z);
+    });
+
+    rockBackTween.onComplete(()=>{
+        console.log("Dwayne has reached destination");
+        rockMovingFlag=false;
+        arenaObject = null;
+        
+    });
+    rockBackTween.start();
+}
+
+async function moveBackPaperStackFade(){
+    if (paperMovingFlag){
+        await waitForTween("paper");
+    }
+    paperMovingFlag = true;
+    const paperBackStackTween = new TWEEN.Tween({x:20, y:-120, z:0})
+    .to({x:0, y:0, z:0}, 2000)
+    .easing(TWEEN.Easing.Circular.InOut);
+
+    paperBackStackTween.onUpdate(function(obj){
+        paperStack.position.set(obj.x, obj.y, obj.z);
+    });
+
+    paperBackStackTween.onComplete(()=>{
+        console.log("paperback");
+        paperMovingFlag=false;
+        arenaObject=null;
+    });
+
+    paperBackStackTween.start();
+}
+
+async function moveBackScissorFade(){
+    if (scissorMovingFlag){
+        await waitForTween("scissor");
+    }
+
+    scissorMovingFlag = true;
+    const scissorBackTween = new TWEEN.Tween({x:20, y:-120, z:0})
+    .to({x: -2.5, y:0, z:-15})
+    .easing(TWEEN.Easing.Circular.InOut);
+
+    scissorBackTween.onUpdate(function(obj){
+        scissor.position.set(obj.x, obj.y, obj.z);
+    });
+
+    scissorBackTween.onComplete(()=>{
+        scissorMovingFlag=false;
+        checkForTweenLocation(scissor);
+        arenaObject = null;
+    });
+    
+    scissorBackTween.start();
+}
+
+async function moveEnemyBack(object) {
+    await waitForTween("enemy");
+    
+    isEnemyDescending = true;
+
+    let enemyPos = {x:25, y:0, z:0};
+    let enemyArenaPos = {x:20, y:0, z:0};
+    let enemyFadePos = {x:20, y:-120, z:0}
+    
+    if (object.name === "scissor") {
+        enemyPos = {x:25, y:0, z:6.5};
+        enemyArenaPos = {x:20, y:0, z:6.5};
+        enemyFadePos = {x:20, y:-120, z:6.5};
+    }
+
+    let enemeyFadeTween = new TWEEN.Tween(enemyArenaPos)
+        .to(enemyFadePos, 2000)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(function(obj){
+            object.position.set(obj.x, obj.y, obj.z);
+        })
+        .onComplete(()=>{
+            scene.remove(object);
+            isEnemyDescending = false;
+        });
+    
+    enemeyFadeTween.start();
 }
