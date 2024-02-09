@@ -182,7 +182,7 @@ loader.load(
 		console.log( ( xhr.loaded / xhr.total * 100 ), '% loaded' );
 
         // Hide loading screen when all models are loaded
-        if (xhr.loaded / xhr.total * 100 === 100){
+        if (xhr.loaded / xhr.total * 100 >= 100){
             loadBlocker.style.opacity = 0;
             loadBlocker.style.zIndex = -2;
             loadBlocker.style.pointerEvents = "none";
