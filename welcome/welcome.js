@@ -58,7 +58,7 @@ camera.zoom = 1;
 let fontLoader = new FontLoader();
 
 const font = fontLoader.load(
-    '../fonts/kroeger 05_55_Regular.json',
+    '/threeTest/fonts/kroeger 05_55_Regular.json',
     function (font){
         console.log(font);
         console.log("loaded");
