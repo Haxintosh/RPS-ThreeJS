@@ -332,7 +332,7 @@ function buttonHandler(){
         let object = intersects[0].object;
         if (object.name === "easy" || object.name === "medium" || object.name === "hard"){
             console.log(object.name);
-            let url = "/threeTest/game/game.html"
+            let url = "/RPS-ThreeJS/game/"
             switch (object.name){ // omg there's something called switch :brainblown:
                 case "easy":
                     url += "?difficulty=easy";
